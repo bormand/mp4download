@@ -40,12 +40,13 @@ public class MP4Downloader {
 		return buf;
 	}
 	
-	private void downloadContent(FileChannel output, long offset) throws IOException {
+	private void downloadContent(FileChannel output, long offset, long skipAtEnd) throws IOException {
 		System.out.println("Starting data transfer...");
 
-		long size = reader.getSize() - offset;
+		long size = reader.getSize();
 		if (size > limit)
 			size = limit;
+		size -= offset + skipAtEnd;
 		InputStream stream = reader.openStream(offset, size);
 		
 		ByteBuffer buf = ByteBuffer.allocate(TRANSFER_BUFFER_SIZE);
@@ -213,7 +214,7 @@ public class MP4Downloader {
 			MP4BoxHeader header = MP4BoxHeader.parse(buf);
 			if (header.getType().equals("moov")) {
 				System.out.println("'moov' box detected at start of file, starting direct download");
-				downloadContent(output, 0);
+				downloadContent(output, 0, 0);
 				return;
 			}
 
@@ -236,7 +237,7 @@ public class MP4Downloader {
 			output.write(moov);
 
 			// start content downloading
-			downloadContent(output, ftypHeader.getSize());
+			downloadContent(output, ftypHeader.getSize(), moov.limit());
 		}
 	}
 
